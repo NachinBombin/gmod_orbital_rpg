@@ -10,8 +10,8 @@ include("shared.lua")
 -- Configuration
 -- =========================================================================
 local SPEED          = 400    -- units/s  (vanilla RPG ~1200 – intentionally slower)
-local ORBIT_RADIUS_A = 48     -- ellipse semi-major axis  (side-to-side)
-local ORBIT_RADIUS_B = 28     -- ellipse semi-minor axis  (up-down)
+local ORBIT_RADIUS_A = 22     -- ellipse semi-major axis  (side-to-side)  [tightened from 48]
+local ORBIT_RADIUS_B = 13     -- ellipse semi-minor axis  (up-down)        [tightened from 28]
 local ORBIT_SPEED    = 4.5    -- radians/s  (how fast it circles)
 local LIFETIME       = 12     -- seconds before self-removal
 local DAMAGE         = 100
@@ -38,17 +38,24 @@ function ENT:Initialize()
     self._birthTime  = now
     self._origin     = self:GetPos()
     self._forward    = self:GetForward()
-    -- Build a stable right / up orthonormal basis from the launch direction
-    local fwd        = self._forward
-    local right      = fwd:Cross(Vector(0, 0, 1))
+
+    -- Build a stable right / up orthonormal basis from the launch direction.
+    -- We use world-up (0,0,1) as reference so the orbit plane is always
+    -- aligned to the world, keeping the orbit tight and predictable.
+    local fwd   = self._forward
+    local right = fwd:Cross(Vector(0, 0, 1))
     if right:LengthSqr() < 0.001 then
         right = fwd:Cross(Vector(0, 1, 0))
     end
     right:Normalize()
-    local up         = right:Cross(fwd)
+    local up = right:Cross(fwd)
     up:Normalize()
-    self._right  = right
-    self._up     = up
+    self._right = right
+    self._up    = up
+
+    -- Freeze the launch angle – the missile NEVER rotates from this.
+    -- It translates through the ellipse but its facing stays fixed at spawn.
+    self._fixedAngle = self:GetAngles()
 
     -- Safety timer
     timer.Simple(LIFETIME, function()
@@ -60,8 +67,8 @@ end
 -- Think  – runs every tick
 -- =========================================================================
 function ENT:Think()
-    local t      = CurTime() - self._birthTime
-    local phase  = t * ORBIT_SPEED
+    local t     = CurTime() - self._birthTime
+    local phase = t * ORBIT_SPEED
 
     -- Centre-line position (straight ahead at SPEED)
     local centre = self._origin + self._forward * (SPEED * t)
@@ -71,13 +78,6 @@ function ENT:Think()
                  + self._up    * (ORBIT_RADIUS_B * math.sin(phase))
 
     local newPos = centre + offset
-
-    -- Aim the missile along its instantaneous velocity direction
-    -- (derivative of position w.r.t. time)
-    local vel = self._forward * SPEED
-              + self._right   * (-ORBIT_RADIUS_A * ORBIT_SPEED * math.sin(phase))
-              + self._up      * ( ORBIT_RADIUS_B * ORBIT_SPEED * math.cos(phase))
-    local velDir = vel:GetNormalized()
 
     -- Collision trace before we commit to the new position
     local tr = util.TraceLine({
@@ -93,7 +93,8 @@ function ENT:Think()
     end
 
     self:SetPos(newPos)
-    self:SetAngles(velDir:Angle())
+    -- Always restore the fixed launch angle – no spinning, no tilting.
+    self:SetAngles(self._fixedAngle)
     self:NextThink(CurTime())  -- think every tick
     return true
 end
@@ -118,17 +119,9 @@ function ENT:Explode(pos, normal, hitEnt)
     effectData:SetScale(1)
     util.Effect("Explosion", effectData, true, true)
 
-    -- Damage
-    local dmgInfo = DamageInfo()
-    dmgInfo:SetDamage(DAMAGE)
-    dmgInfo:SetDamageType(DMG_BLAST)
-    dmgInfo:SetAttacker(IsValid(self:GetOwner()) and self:GetOwner() or game.GetWorld())
-    dmgInfo:SetInflictor(self)
-    dmgInfo:SetReportedPosition(pos)
-
     util.BlastDamage(self, IsValid(self:GetOwner()) and self:GetOwner() or self, pos, BLAST_RADIUS, DAMAGE)
 
-    -- Decal
+    -- Scorch decal
     util.Decal("Scorch", pos + normal, pos - normal)
 
     self:Remove()
