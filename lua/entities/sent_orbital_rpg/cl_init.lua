@@ -7,6 +7,8 @@ include("shared.lua")
 -- Initialise
 -- =========================================================================
 function ENT:Initialize()
+    if not IsValid(self) then return end
+
     self:SetRenderBounds(
         Vector(-32, -32, -32),
         Vector( 32,  32,  32)
@@ -15,8 +17,9 @@ function ENT:Initialize()
     -- ----------------------------------------------------------------
     -- Thruster / glow particle  (matches vanilla RPG)
     -- ----------------------------------------------------------------
-    self._thrusterPart = CreateParticleSystem(self, "rockettrail", PATTACH_POINT_FOLLOW, 0)
-    if IsValid(self._thrusterPart) then
+    local ok, part = pcall(CreateParticleSystem, self, "rockettrail", PATTACH_POINT_FOLLOW, 0)
+    if ok and IsValid(part) then
+        self._thrusterPart = part
         self._thrusterPart:SetOwner(self)
     end
 
@@ -25,14 +28,14 @@ function ENT:Initialize()
     -- ----------------------------------------------------------------
     self._dynLight = DynamicLight(self:EntIndex())
     if self._dynLight then
-        self._dynLight.style   = 0
-        self._dynLight.r       = 255
-        self._dynLight.g       = 160
-        self._dynLight.b       = 30
+        self._dynLight.style      = 0
+        self._dynLight.r          = 255
+        self._dynLight.g          = 160
+        self._dynLight.b          = 30
         self._dynLight.brightness = 2
-        self._dynLight.size    = 80
-        self._dynLight.decay   = 0   -- we update it manually in Draw
-        self._dynLight.dietime = CurTime() + 9999
+        self._dynLight.size       = 80
+        self._dynLight.decay      = 0   -- we update it manually in Draw
+        self._dynLight.dietime    = CurTime() + 9999
     end
 end
 
