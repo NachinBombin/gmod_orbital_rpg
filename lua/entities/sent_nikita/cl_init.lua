@@ -5,14 +5,17 @@
 include("shared.lua")
 
 function ENT:Initialize()
+    if not IsValid(self) then return end
+
     self:SetRenderBounds(
         Vector(-120, -120, -120),
         Vector( 120,  120,  120)
     )
 
     -- Vanilla rockettrail
-    self._thrusterPart = CreateParticleSystem(self, "rockettrail", PATTACH_POINT_FOLLOW, 0)
-    if IsValid(self._thrusterPart) then
+    local ok, part = pcall(CreateParticleSystem, self, "rockettrail", PATTACH_POINT_FOLLOW, 0)
+    if ok and IsValid(part) then
+        self._thrusterPart = part
         self._thrusterPart:SetOwner(self)
     end
 
