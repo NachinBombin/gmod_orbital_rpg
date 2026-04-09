@@ -12,7 +12,7 @@ include("shared.lua")
 -- =========================================================================
 local SPEED          = 200      -- units/s  (crawl)
 local TURN_SPEED     = 120      -- degrees/s  max steering angle change
-local SCALE          = 10       -- visual + collision scale (was 6, now 10 -- bigger)
+local SCALE          = 10       -- visual + collision scale
 local HP             = 10       -- missile health before early detonation
 local LIFETIME       = 30       -- seconds before self-removal
 local DAMAGE         = 120
@@ -68,7 +68,10 @@ function ENT:Initialize()
 
     self:SetMaxHealth(HP)
     self:SetHealth(HP)
-    self:SetTakeDamageType(DAMAGE_YES)
+    -- SetTakeDamageType is provided by base_entity (now our base in shared.lua)
+    if self.SetTakeDamageType then
+        self:SetTakeDamageType(DAMAGE_YES)
+    end
 
     -- Store the launch forward as the initial travel direction
     self._currentDir = self:GetForward():GetNormalized()
@@ -97,10 +100,16 @@ end
 -- Think  --  CurTime-based delta, no FrameTime()
 -- =========================================================================
 function ENT:Think()
+    -- Guard: _lastThink must exist (set in Initialize)
+    if not self._lastThink then
+        self._lastThink = CurTime()
+        self:NextThink(CurTime() + THINK_INTERVAL)
+        return true
+    end
+
     local now = CurTime()
     local dt  = now - self._lastThink
 
-    -- Guard: if somehow dt is 0 or negative, skip and reschedule
     if dt <= 0 then
         self:NextThink(now + THINK_INTERVAL)
         return true
@@ -122,8 +131,7 @@ function ENT:Think()
         desiredDir = SafeNorm(toTarget, self._currentDir)
     end
 
-    -- Angle-clamp steering: rotate _currentDir toward desiredDir by at most
-    -- TURN_SPEED * dt degrees.  This avoids any teleport flip.
+    -- Angle-clamp steering
     local maxAngle  = TURN_SPEED * dt
     local angleDiff = math.deg(math.acos(math.Clamp(self._currentDir:Dot(desiredDir), -1, 1)))
 
@@ -137,10 +145,8 @@ function ENT:Think()
     newDir = SafeNorm(newDir, self._currentDir)
     self._currentDir = newDir
 
-    -- New position
     local newPos = self:GetPos() + newDir * (SPEED * dt)
 
-    -- Collision trace
     local tr = util.TraceLine({
         start  = self:GetPos(),
         endpos = newPos,
@@ -153,7 +159,6 @@ function ENT:Think()
         return
     end
 
-    -- Proximity detonation
     if IsValid(self._target) then
         if self:GetPos():Distance(self._target:WorldSpaceCenter()) < HITBOX + 20 then
             self:Explode(self:GetPos(), Vector(0, 0, 1))
@@ -191,13 +196,12 @@ end
 -- Explode
 -- =========================================================================
 function ENT:Explode(pos, normal)
-    -- Guard against double-explode
     if self._exploded then return end
     self._exploded = true
 
     local effectData = EffectData()
     effectData:SetOrigin(pos)
-    effectData:SetNormal(normal or Vector(0,0,1))
+    effectData:SetNormal(normal or Vector(0, 0, 1))
     effectData:SetScale(1)
     util.Effect("Explosion", effectData, true, true)
 
@@ -207,7 +211,7 @@ function ENT:Explode(pos, normal)
         pos, BLAST_RADIUS, DAMAGE
     )
 
-    util.Decal("Scorch", pos + (normal or Vector(0,0,1)), pos - (normal or Vector(0,0,1)))
+    util.Decal("Scorch", pos + (normal or Vector(0, 0, 1)), pos - (normal or Vector(0, 0, 1)))
 
     self:Remove()
 end

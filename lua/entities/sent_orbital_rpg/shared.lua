@@ -3,7 +3,7 @@
 -- between server and client.
 
 ENT.Type           = "anim"
-ENT.Base           = "base_anim"
+ENT.Base           = "base_entity"  -- base_entity provides SetOwner, GetOwner, damage methods
 ENT.PrintName      = "Orbital RPG Missile"
 ENT.Author         = "NachinBombin"
 ENT.Spawnable      = false  -- fired programmatically, not from spawn menu

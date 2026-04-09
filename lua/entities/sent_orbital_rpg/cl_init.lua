@@ -16,11 +16,12 @@ function ENT:Initialize()
 
     -- ----------------------------------------------------------------
     -- Thruster / glow particle  (matches vanilla RPG)
+    -- SetOwner is a server-only concept on base_entity; the particle
+    -- system does not need an owner on the client side.
     -- ----------------------------------------------------------------
     local ok, part = pcall(CreateParticleSystem, self, "rockettrail", PATTACH_POINT_FOLLOW, 0)
     if ok and IsValid(part) then
         self._thrusterPart = part
-        self._thrusterPart:SetOwner(self)
     end
 
     -- ----------------------------------------------------------------
@@ -34,7 +35,7 @@ function ENT:Initialize()
         self._dynLight.b          = 30
         self._dynLight.brightness = 2
         self._dynLight.size       = 80
-        self._dynLight.decay      = 0   -- we update it manually in Draw
+        self._dynLight.decay      = 0
         self._dynLight.dietime    = CurTime() + 9999
     end
 end
@@ -45,11 +46,10 @@ end
 function ENT:Draw()
     self:DrawModel()
 
-    -- Keep the dynamic light attached
     if self._dynLight then
         local pos = self:GetPos()
         self._dynLight.pos     = pos
-        self._dynLight.dietime = CurTime() + 0.05  -- renew each frame
+        self._dynLight.dietime = CurTime() + 0.05
     end
 end
 
@@ -60,5 +60,4 @@ function ENT:OnRemove()
     if IsValid(self._thrusterPart) then
         self._thrusterPart:StopEmission()
     end
-    -- Let the dynamic light die naturally (dietime already elapsed)
 end

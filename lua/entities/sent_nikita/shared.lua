@@ -1,8 +1,8 @@
--- shared.lua  –  NIKITA missile
--- Slow homing missile. Destructible (10 HP). 6x scale.
+-- shared.lua  --  NIKITA missile
+-- Slow homing missile. Destructible (10 HP). 10x scale.
 
 ENT.Type           = "anim"
-ENT.Base           = "base_anim"
+ENT.Base           = "base_entity"  -- base_entity provides SetOwner, GetOwner, SetTakeDamageType
 ENT.PrintName      = "NIKITA"
 ENT.Author         = "NachinBombin"
 ENT.Spawnable      = false

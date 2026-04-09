@@ -12,11 +12,11 @@ function ENT:Initialize()
         Vector( 120,  120,  120)
     )
 
-    -- Vanilla rockettrail
+    -- Vanilla rockettrail.
+    -- SetOwner is server-only on base_entity; not called on client.
     local ok, part = pcall(CreateParticleSystem, self, "rockettrail", PATTACH_POINT_FOLLOW, 0)
     if ok and IsValid(part) then
         self._thrusterPart = part
-        self._thrusterPart:SetOwner(self)
     end
 
     -- Dynamic light -- bigger to match 10x scale
