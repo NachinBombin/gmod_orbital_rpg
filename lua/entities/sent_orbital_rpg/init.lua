@@ -17,6 +17,9 @@ local LIFETIME       = 12     -- seconds before self-removal
 local DAMAGE         = 100
 local BLAST_RADIUS   = 200
 
+local FLAME_LOOP_SND = "nikita/flame_loop.wav"
+local FLAME_SND_LEVEL = 85  -- SNDLVL_NORM
+
 -- =========================================================================
 -- Spawn  (called by the firing weapon / admin command)
 -- =========================================================================
@@ -56,6 +59,9 @@ function ENT:Initialize()
     -- Freeze the launch angle – the missile NEVER rotates from this.
     -- It translates through the ellipse but its facing stays fixed at spawn.
     self._fixedAngle = self:GetAngles()
+
+    -- Flame loop: bound to the missile entity so it 3D-tracks position in flight
+    self:EmitSound(FLAME_LOOP_SND, FLAME_SND_LEVEL, 100, 1)
 
     -- Safety timer
     timer.Simple(LIFETIME, function()
@@ -112,6 +118,9 @@ end
 -- Explode
 -- =========================================================================
 function ENT:Explode(pos, normal, hitEnt)
+    -- Stop the flight loop before the entity is removed
+    self:StopSound(FLAME_LOOP_SND)
+
     -- Vanilla RPG explosion effect
     local effectData = EffectData()
     effectData:SetOrigin(pos)
